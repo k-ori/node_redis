@@ -270,7 +270,7 @@ RedisClient.prototype.on_connect = function () {
 RedisClient.prototype.init_parser = function () {
     var self = this, parser_i, parser_count, option_matched = false, parser;
     if (this.options.parser) {
-        for(parser_i=0,parser_count=parsers.length; parser_i<parser_count; parser_i+=1) {
+        for (parser_i = 0, parser_count = parsers.length; parser_i < parser_count; parser_i+=1) {
 	    parser = parsers[parser_i];
             if (parser.name === this.options.parser) {
 	        this.parser_module = parser;
@@ -347,7 +347,7 @@ RedisClient.prototype.on_ready = function () {
             }
         };
         var key, sub_i, sub_keys_length, keys=Object.keys(this.subscription_set);
-        for(sub_i=0, sub_keys_length=keys.length; sub_i<sub_keys_length; sub_i+=1) {
+        for (sub_i = 0, sub_keys_length = keys.length; sub_i < sub_keys_length; sub_i+=1) {
 	    key = keys[sub_i];
             var parts = key.split(" ");
             if (exports.debug_mode) {
@@ -375,7 +375,7 @@ RedisClient.prototype.on_info_cmd = function (err, res) {
     lines = res.toString().split("\r\n");
 
     var line, line_i, line_length, parts;
-    for(line_i=0, line_length=lines.length; line_i<line_length; line_i+=1) {
+    for (line_i = 0, line_length = lines.length; line_i < line_length; line_i+=1) {
         line = lines[line_i];
         parts = line.split(':');
         if (parts[1]) {
@@ -385,7 +385,7 @@ RedisClient.prototype.on_info_cmd = function (err, res) {
 
     obj.versions = [];
     var version_el, version_i, version_length, version_seq=obj.redis_version.split('.');
-    for(version_i=0, version_length=version_seq.length; version_i<version_length; version_i+=1) {
+    for (version_i = 0, version_length = version_seq.length; version_i < version_length; version_i+=1) {
         version_el = version_seq[version_i];
         obj.versions.push(+version_el);
     }
@@ -704,7 +704,7 @@ RedisClient.prototype.return_reply = function (reply) {
         args_start = reply.indexOf('"')+1;
         args_escaped = reply.slice(args_start, -1).split('" "');
         args = [];
-        for(arg_i=0,arg_len=args_escaped.length; arg_i<arg_len; arg_i+=1) {
+        for (arg_i = 0, arg_len = args_escaped.length; arg_i < arg_len; arg_i+=1) {
 	    args.push(args_escaped[arg_i].replace(/\\"/g, '"'));
 	}
         this.emit("monitor", timestamp, args);
@@ -1059,7 +1059,7 @@ Multi.prototype.hmset = function () {
     if (args.length >= 2 && typeof args[0] === "string" && typeof args[1] === "object") {
         tmp_args = [ "hmset", args[0] ];
         field_keys = Object.keys(args[1]);
-        for(key_i=0, key_length=field_keys.length; key_i<key_length; key_i+=1) {
+        for (key_i = 0, key_length = field_keys.length; key_i < key_length; key_i+=1) {
 	    field_key = field_keys[key_i];
 	    tmp_args.push(field_key);
             tmp_args.push(args[1][field_key]);
@@ -1082,7 +1082,7 @@ Multi.prototype.exec = function (callback) {
     var errors = [];
     var item_i, queue_length = this.queue.length;
     // drain queue, callback will catch "QUEUED" or error
-    for(item_i=0; item_i<queue_length; item_i+=1) {
+    for (item_i = 0; item_i < queue_length; item_i+=1) {
         var args = this.queue[item_i], command = args[0];
         if (typeof args[args.length - 1] === "function") {
             args = args.slice(1, -1);
@@ -1094,7 +1094,7 @@ Multi.prototype.exec = function (callback) {
         }
         if (command.toLowerCase() === 'hmset' && typeof args[1] === 'object') {
             var key, key_i, key_length, obj = args.pop(), keys = Object.keys(obj);
-	    for(key_i=0, key_length=keys.length; key_i<key_length; key_i+=1) {
+	    for (key_i = 0, key_length = keys.length; key_i < key_length; key_i+=1) {
 	        key = keys[key_i];
 	        args.push(key);
                 args.push(obj[key]);
