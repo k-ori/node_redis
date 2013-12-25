@@ -268,19 +268,21 @@ RedisClient.prototype.on_connect = function () {
 };
 
 RedisClient.prototype.init_parser = function () {
-    var self = this;
-
+    var self = this, parser_i, parser_count, option_matched = false, parser;
     if (this.options.parser) {
-        if (! parsers.some(function (parser) {
-            if (parser.name === self.options.parser) {
-                self.parser_module = parser;
+        for(parser_i=0,parser_count=parsers.length; parser_i<parser_count; parser_i+=1) {
+	    parser = parsers[parser_i];
+            if (parser.name === this.options.parser) {
+	        this.parser_module = parser;
                 if (exports.debug_mode) {
-                    console.log("Using parser module: " + self.parser_module.name);
+                    console.log("Using parser module: " + this.parser_module.name);
                 }
-                return true;
-            }
-        })) {
-            throw new Error("Couldn't find named parser " + self.options.parser + " on this system");
+	        option_matched = true;
+	        break;
+	    }
+	}
+        if (!option_matched) {
+            throw new Error("Couldn't find named parser " + this.options.parser + " on this system");
         }
     } else {
         if (exports.debug_mode) {
@@ -344,14 +346,16 @@ RedisClient.prototype.on_ready = function () {
                 self.emit("ready");
             }
         };
-        Object.keys(this.subscription_set).forEach(function (key) {
+        var key, sub_i, sub_keys_length, keys=Object.keys(this.subscription_set);
+        for(sub_i=0, sub_keys_length=keys.length; sub_i<sub_keys_length; sub_i+=1) {
+	    key = keys[sub_i];
             var parts = key.split(" ");
             if (exports.debug_mode) {
                 console.warn("sending pub/sub on_ready " + parts[0] + ", " + parts[1]);
             }
             callback_count++;
             self.send_command(parts[0] + "scribe", [parts[1]], callback);
-        });
+        }
         return;
     } else if (this.monitoring) {
         this.send_command("monitor");
@@ -370,17 +374,21 @@ RedisClient.prototype.on_info_cmd = function (err, res) {
 
     lines = res.toString().split("\r\n");
 
-    lines.forEach(function (line) {
-        var parts = line.split(':');
+    var line, line_i, line_length, parts;
+    for(line_i=0, line_length=lines.length; line_i<line_length; line_i+=1) {
+        line = lines[line_i];
+        parts = line.split(':');
         if (parts[1]) {
             obj[parts[0]] = parts[1];
         }
-    });
+    }
 
     obj.versions = [];
-    obj.redis_version.split('.').forEach(function (num) {
-        obj.versions.push(+num);
-    });
+    var version_el, version_i, version_length, version_seq=obj.redis_version.split('.');
+    for(version_i=0, version_length=version_seq.length; version_i<version_length; version_i+=1) {
+        version_el = version_seq[version_i];
+        obj.versions.push(+version_el);
+    }
 
     // expose info key/vals to users
     this.server_info = obj;
@@ -616,7 +624,7 @@ function reply_to_strings(reply) {
 }
 
 RedisClient.prototype.return_reply = function (reply) {
-    var command_obj, len, type, timestamp, argindex, args, queue_len;
+    var command_obj, type, queue_len, timestamp, args_start, arg_len, args_escaped, args, arg_i;
 
     // If the "reply" here is actually a message received asynchronously due to a
     // pubsub subscription, don't pop the command queue as we'll only be consuming
@@ -692,12 +700,13 @@ RedisClient.prototype.return_reply = function (reply) {
             throw new Error("subscriptions are active but got an invalid reply: " + reply);
         }
     } else if (this.monitoring) {
-        len = reply.indexOf(" ");
-        timestamp = reply.slice(0, len);
-        argindex = reply.indexOf('"');
-        args = reply.slice(argindex + 1, -1).split('" "').map(function (elem) {
-            return elem.replace(/\\"/g, '"');
-        });
+        timestamp = reply.slice(0, reply.indexOf(" "));
+        args_start = reply.indexOf('"')+1;
+        args_escaped = reply.slice(args_start, -1).split('" "');
+        args = [];
+        for(arg_i=0,arg_len=args_escaped.length; arg_i<arg_len; arg_i+=1) {
+	    args.push(args_escaped[arg_i].replace(/\\"/g, '"'));
+	}
         this.emit("monitor", timestamp, args);
     } else {
         throw new Error("node_redis command queue state error. If you can reproduce this, please report it.");
@@ -924,14 +933,14 @@ exports.Multi = Multi;
 
 // take 2 arrays and return the union of their elements
 function set_union(seta, setb) {
-    var obj = {};
+    var obj = {}, vala, valb, set_i=0;
 
-    seta.forEach(function (val) {
-        obj[val] = true;
-    });
-    setb.forEach(function (val) {
-        obj[val] = true;
-    });
+    while ( (vala=setb[set_i]) !== undefined
+	 && (valb=seta[set_i]) !== undefined ) {
+        if (vala !== undefined) { obj[vala] = true; }
+        if (valb !== undefined) { obj[valb] = true; }
+	set_i+=1;
+    }
     return Object.keys(obj);
 }
 
@@ -1046,13 +1055,15 @@ RedisClient.prototype.hmset = function (args, callback) {
 RedisClient.prototype.HMSET = RedisClient.prototype.hmset;
 
 Multi.prototype.hmset = function () {
-    var args = to_array(arguments), tmp_args;
+    var args = to_array(arguments), tmp_args, field_keys, key_i, key_length, field_key;
     if (args.length >= 2 && typeof args[0] === "string" && typeof args[1] === "object") {
         tmp_args = [ "hmset", args[0] ];
-        Object.keys(args[1]).map(function (key) {
-            tmp_args.push(key);
-            tmp_args.push(args[1][key]);
-        });
+        field_keys = Object.keys(args[1]);
+        for(key_i=0, key_length=field_keys.length; key_i<key_length; key_i+=1) {
+	    field_key = field_keys[key_i];
+	    tmp_args.push(field_key);
+            tmp_args.push(args[1][field_key]);
+	}
         if (args[2]) {
             tmp_args.push(args[2]);
         }
@@ -1069,10 +1080,10 @@ Multi.prototype.HMSET = Multi.prototype.hmset;
 Multi.prototype.exec = function (callback) {
     var self = this;
     var errors = [];
+    var item_i, queue_length = this.queue.length;
     // drain queue, callback will catch "QUEUED" or error
-    // TODO - get rid of all of these anonymous functions which are elegant but slow
-    this.queue.forEach(function (args, index) {
-        var command = args[0], obj;
+    for(item_i=0; item_i<queue_length; item_i+=1) {
+        var args = this.queue[item_i], command = args[0];
         if (typeof args[args.length - 1] === "function") {
             args = args.slice(1, -1);
         } else {
@@ -1082,23 +1093,26 @@ Multi.prototype.exec = function (callback) {
             args = args[0];
         }
         if (command.toLowerCase() === 'hmset' && typeof args[1] === 'object') {
-            obj = args.pop();
-            Object.keys(obj).forEach(function (key) {
-                args.push(key);
+            var key, key_i, key_length, obj = args.pop(), keys = Object.keys(obj);
+	    for(key_i=0, key_length=keys.length; key_i<key_length; key_i+=1) {
+	        key = keys[key_i];
+	        args.push(key);
                 args.push(obj[key]);
-            });
+	    }
         }
-        this._client.send_command(command, args, function (err, reply) {
-            if (err) {
-                var cur = self.queue[index];
-                if (typeof cur[cur.length - 1] === "function") {
-                    cur[cur.length - 1](err);
-                } else {
-                    errors.push(new Error(err));
-                }
-            }
-        });
-    }, this);
+        this._client.send_command(command, args, (function(item) {
+	    return function (err, reply) {
+	        var callback_err;
+                if (err) {
+                    if (typeof (callback_err=item[item.length - 1]) === "function") {
+		        callback_err(err);
+		    } else {
+		        errors.push(new Error(err));
+		    }
+		}
+            };
+	})(this.queue[item_i]));
+    }
 
     // TODO - make this callback part of Multi.prototype instead of creating it each time
     return this._client.send_command("EXEC", [], function (err, replies) {
@@ -1112,16 +1126,16 @@ Multi.prototype.exec = function (callback) {
             }
         }
 
-        var i, il, reply, args;
+        var reply_i, reply, args;
 
         if (replies) {
-            for (i = 1, il = self.queue.length; i < il; i += 1) {
-                reply = replies[i - 1];
-                args = self.queue[i];
+            for (reply_i = 1; reply_i < queue_length; reply_i += 1) {
+                reply = replies[reply_i - 1];
+                args = self.queue[reply_i];
 
                 // TODO - confusing and error-prone that hgetall is special cased in two places
                 if (reply && args[0].toLowerCase() === "hgetall") {
-                    replies[i - 1] = reply = reply_to_object(reply);
+                    replies[reply_i - 1] = reply = reply_to_object(reply);
                 }
 
                 if (typeof args[args.length - 1] === "function") {
