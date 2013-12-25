@@ -589,15 +589,15 @@ function try_callback(client, callback, reply) {
 
 // hgetall converts its replies to an Object.  If the reply is empty, null is returned.
 function reply_to_object(reply) {
-    var obj = {}, j, jl, key, val;
+    var obj = {}, reply_length = reply.length, reply_i, key, val;
 
-    if (reply.length === 0) {
+    if (reply_length === 0) {
         return null;
     }
 
-    for (j = 0, jl = reply.length; j < jl; j += 2) {
-        key = reply[j].toString();
-        val = reply[j + 1];
+    for (reply_i = 0; reply_i < reply_length; reply_i += 2) {
+        key = reply[reply_i].toString();
+        val = reply[reply_i + 1];
         obj[key] = val;
     }
 
@@ -605,16 +605,16 @@ function reply_to_object(reply) {
 }
 
 function reply_to_strings(reply) {
-    var i;
+    var reply_i, reply_length;
 
     if (Buffer.isBuffer(reply)) {
         return reply.toString();
     }
 
     if (Array.isArray(reply)) {
-        for (i = 0; i < reply.length; i++) {
-            if (reply[i] !== null && reply[i] !== undefined) {
-                reply[i] = reply[i].toString();
+        for (reply_i = 0, reply_length = reply.length; reply_i < reply_length; reply_i+=1) {
+            if (reply[reply_i] !== null && reply[reply_i] !== undefined) {
+                reply[reply_i] = reply[reply_i].toString();
             }
         }
         return reply;
@@ -882,7 +882,7 @@ RedisClient.prototype.send_command = function (command, args, callback) {
 };
 
 RedisClient.prototype.pub_sub_command = function (command_obj) {
-    var i, key, command, args;
+    var arg_i, arg_len, key, command, args;
 
     if (this.pub_sub_mode === false && exports.debug_mode) {
         console.log("Entering pub/sub mode from " + command_obj.command);
@@ -898,8 +898,8 @@ RedisClient.prototype.pub_sub_command = function (command_obj) {
         } else {
             key = "psub";
         }
-        for (i = 0; i < args.length; i++) {
-            this.subscription_set[key + " " + args[i]] = true;
+        for (arg_i=0, arg_len=args.length ; arg_i <arg_len ; arg_i+=1) {
+            this.subscription_set[key + " " + args[arg_i]] = true;
         }
     } else {
         if (command === "unsubscribe") {
@@ -907,8 +907,8 @@ RedisClient.prototype.pub_sub_command = function (command_obj) {
         } else {
             key = "psub";
         }
-        for (i = 0; i < args.length; i++) {
-            delete this.subscription_set[key + " " + args[i]];
+        for (arg_i = 0, arg_len=args.length; arg_i < arg_len; arg_i+=1) {
+            delete this.subscription_set[key + " " + args[arg_i]];
         }
     }
 };
